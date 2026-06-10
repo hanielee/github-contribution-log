@@ -1,16 +1,23 @@
 # Contribution [#]: [Issue Title]
 
-**Contribution Number:** [1 / 2 / 3]  
-**Student:** [Your Name]  
-**Issue:** [GitHub issue link]  
-**Status:** [Phase I / Phase II / Phase III / Phase IV] [In Progress / Complete]
+**Contribution Number:** [1]  
+**Student:** Hana Lee
+**Issue:** [add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385)
+**Status:** [Phase I] [In Progress]
 
 ---
 
 ## Why I Chose This Issue
 
-[1-2 paragraphs explaining why this issue interests you, how it matches your skills/learning goals, what you hope to learn]
+**I chose issue #11385 in inventree/InvenTree, "Add part button disappears in parametric view," because it's a focused UI consistency bug that I can approach confidently with my React/TypeScript background, and it sits inside a real inventory management system used in production.
 
+I'm interested in this because:
+
+- Missing UI elements based on view state are typically a conditional rendering problem, an area I have hands-on experience debugging
+- The fix likely involves understanding how InvenTree manages toolbar actions across different view modes, which will teach me how this codebase handles shared UI state at a component level
+- Inventory and parts management systems are new domain territory for me, so understanding how the parametric view differs architecturally from the table view is a learning goal in itself
+
+From reading the issue, the "Add Part" button is rendered correctly in Table View but not carried over to Parametric View, suggesting the two views don't share a common toolbar or action layer. My contribution will make the button available consistently across views, respecting existing permission logic.**
 ---
 
 ## Understanding the Issue
