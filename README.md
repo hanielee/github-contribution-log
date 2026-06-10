@@ -1,8 +1,11 @@
 # Contribution [#]: [Issue Title]
 
 **Contribution Number:** [1]  
+
 **Student:** Hana Lee
+
 **Issue:** [add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385)
+
 **Status:** [Phase I] [In Progress]
 
 ---
