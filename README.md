@@ -12,7 +12,7 @@
 
 ## Why I Chose This Issue
 
-I chose issue #11385 in inventree/InvenTree, "Add part button disappears in parametric view," because it's a focused UI consistency bug that I can approach confidently with my React/TypeScript background, and it sits inside a real inventory management system used in production.
+I chose issue #11385 in inventree/InvenTree, "add part button disappear if grid style is changed to parametric view" because it's a focused UI consistency bug that I can approach confidently with my React/TypeScript background, and it sits inside a real inventory management system used in production.
 
 I'm interested in this because:
 
