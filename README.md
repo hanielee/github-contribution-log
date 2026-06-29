@@ -207,20 +207,55 @@ Planned verification:
 
 ## Testing Strategy
 
+InvenTree's frontend uses Playwright end-to-end tests. All new tests are added to
+`src/frontend/tests/pages/pui_part.spec.ts`, following the same patterns as the existing
+`Parts - Parameters by Category` test. `readeruser` was added to the imports from
+`'../defaults'` to support the permission test.
+
 ### Unit Tests
 
-- [ ] Test case 1: [Description]
-- [ ] Test case 2: [Description]
-- [ ] Test case 3: [Description]
+- [ ] Test case 1: Admin sees Add button in Parametric View
+      `test('Parts - Add button visible in Parametric View (admin)')`
+
+Logs in as the default allaccess user, navigates to `part/category/4/parts`, switches
+to Parametric View via `showParametricView(page)`, then asserts the button with
+`aria-label="action-menu-add-parts"` is visible. Directly tests the reported bug.
+- [ ] Test case 2: Add button opens Create Part form
+`test('Parts - Add button opens Create Part form in Parametric View')`
+
+Same setup. Clicks the Add Parts dropdown, clicks the "Create Part" menu item
+(`aria-label="action-menu-add-parts-create-part"`), asserts the "Add Part" modal
+appears, then dismisses. Confirms the modal is correctly wired, not just that the button renders.
+- [ ] Test case 3:  Reader user does NOT see Add button
+      `test('Parts - Add button hidden in Parametric View (reader)')`
+
+Logs in as `readeruser` (username: `reader` / password: `readonly`). Switches to
+Parametric View and asserts the Add Parts button has count 0. Verifies the permission
+gate (`hasAddRole`) still works — the button is hidden, not just disabled.
 
 ### Integration Tests
 
-- [ ] Integration scenario 1
-- [ ] Integration scenario 2
+- [ ] Create part via Parametric View submits to API
+This test exercises the complete flow: open the Add Part modal from Parametric View,
+fill in the name and description, submit the form, wait for the network to settle, then
+assert the new part name is visible on the resulting page — confirming the API created
+the record. Cleans up before and after using `deletePart()` (which calls the API
+directly) to leave the database state unchanged.
+
+This is the integration scenario: it validates that the modal's `initialData` is
+correctly forwarded to `ApiEndpoints.part_list`, the API accepts the payload, and the
+frontend navigates to the new part on success (`follow: true` in the modal config).
 
 ### Manual Testing
 
-[What you tested manually and results]
+1. Started backend (`invoke dev.server`) and frontend (`yarn run dev`) with demo data loaded.
+2. Logged in as admin, navigated to `part/category/4/parts` (Electronics — has parametric templates).
+3. Confirmed Add button is visible in **Table View**.
+4. Switched to **Parametric View** — Add Parts button now appears in the toolbar.
+5. Clicked Add Parts → Create Part — modal opens pre-filled with the current category.
+6. Switched back to Table View — no regression, button still present.
+7. Logged in as `reader` — Add Parts button absent in both views (permission gate working).
+8. Navigated to `part/category/5/parts` — button appears in Parametric View there too.
 
 ---
 
