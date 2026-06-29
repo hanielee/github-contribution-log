@@ -6,7 +6,7 @@
 
 **Issue:** [add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385)
 
-**Status:** [Phase I] [Complete]
+**Status:** [Phase III] [Complete]
 
 ---
 
@@ -226,19 +226,32 @@ Planned verification:
 
 ## Implementation Notes
 
-### Week [X] Progress
+### Week [3] Progress
 
-[What you built this week, challenges faced, decisions made]
+The fix was completed in two files. The core insight was that `ParametricDataTable` — the generic component that backs Parametric View — had no way to accept toolbar-level actions from its callers; it only supported per-row actions. The solution follows the existing `customColumns` / `customFilters` prop-injection pattern already present in the component.
 
+1. **`ParametricDataTable.tsx`** — added an optional `customActions?: ReactNode[]` prop to the component interface and wired it into the `InvenTreeTable` call as `tableActions: customActions ?? []`. The default of `[]` means every existing caller of `ParametricDataTable` (none of which pass this prop) is completely unaffected.
+
+2. **`ParametricPartTable.tsx`** — imported `useUserState`, `useCreateApiFormModal`, `usePartFields`, `ActionDropdown`, `UserRoles`, `IconPlus`, and `t`. Constructed a `newPart` modal via `useCreateApiFormModal` pointing at `ApiEndpoints.part_list`, pre-seeding `initialData: { category: categoryId }` so new parts default into the current category. Assembled a memoized `tableActions` array containing an `ActionDropdown` gated by `user.hasAddRole(UserRoles.part)` — matching the exact permission gate used in Table View — and passed it to `ParametricDataTable` via the new `customActions` prop.
+
+**Key decisions:**
+- Reused the `customColumns`/`customFilters` convention rather than inventing a new pattern — keeps the diff minimal and stays idiomatic with the codebase.
+- Kept the Add dropdown to "Create Part" only (no file import or supplier import actions) — those require additional wizard state that belongs in `PartListTable`, not a generic wrapper. Scope is limited to the reported bug.
+- Used `hidden={!user.hasAddRole(UserRoles.part)}` (not `!user.hasAddPermission(ModelType.part)`) to match Table View's existing behavior exactly.
+
+**Challenges faced:**
+- Confirming this was not a permissions bug: traced `hasAddRole` call in `PartTable.tsx` and verified the role check returns `true` for admins in both views — the button was simply never rendered, not hidden by a permission check.
+- Determining the right `initialData` for the new part modal: passing `{ category: categoryId }` ensures the form defaults to the category the user is currently browsing, which is the expected UX.
 ### Week [Y] Progress
 
 [Continue documenting as you work]
 
 ### Code Changes
 
-- **Files modified:** [List]
-- **Key commits:** [Links to important commits]
-- **Approach decisions:** [Why you chose certain approaches]
+- **Files modified:** `src/frontend/src/tables/general/ParametricDataTable.tsx`: Added `customActions?: ReactNode[]` prop; passed to `InvenTreeTable` as `tableActions`,`src/frontend/src/tables/part/ParametricPartTable.tsx`: Added Add Part modal, `ActionDropdown` toolbar action, and `customActions` prop wiring |
+- **Key commits:** https://github.com/hanielee/InvenTree/tree/fix-issue-add-part-button
+- **Approach decisions:** - **Why not modify `CategoryDetail.tsx`?** The bug is that `ParametricDataTable` has no way to surface add actions — fixing it there is a symptom fix. The root fix is making the generic component extensible, so any future parametric table (not just parts) can expose toolbar actions too.
+- **Why keep the dropdown wrapper?** `PartListTable` uses an `ActionDropdown` around the "Create Part" action to allow future actions (import from file, import from supplier) to be added without changing the toolbar layout. Matching that structure keeps the two views visually consistent and leaves room for those actions to be added later.
 
 ---
 
