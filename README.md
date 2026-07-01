@@ -252,45 +252,27 @@ Verification plan:
 
 ## Testing Strategy
 
-<<<<<<< HEAD
-InvenTree's frontend uses Playwright end-to-end tests. All new tests are added to
-`src/frontend/tests/pages/pui_part.spec.ts`, following the same patterns as the existing
-`Parts - Parameters by Category` test. `readeruser` was added to the imports from
-`'../defaults'` to support the permission test.
+All new tests are in `src/frontend/tests/pages/pui_part.spec.ts`. `readeruser` was added to the imports from `'../defaults'` to support the permission test.
 
-### Unit Tests
+### Playwright Tests
 
-- [ ] Test case 1: Admin sees Add button in Parametric View
-      `test('Parts - Add button visible in Parametric View (admin)')`
+- [x] **Admin sees Add button in Parametric View** — `test('Parts - Add button visible in Parametric View (admin)')`
 
-Logs in as the default allaccess user, navigates to `part/category/4/parts`, switches
-to Parametric View via `showParametricView(page)`, then asserts the button with
-`aria-label="action-menu-add-parts"` is visible. Directly tests the reported bug.
-- [ ] Test case 2: Add button opens Create Part form
-`test('Parts - Add button opens Create Part form in Parametric View')`
+  Logs in as the default allaccess user, navigates to `part/category/4/parts`, switches to Parametric View via `showParametricView(page)`, then asserts the button with `aria-label="action-menu-add-parts"` is visible. Directly tests the reported bug.
 
-Same setup. Clicks the Add Parts dropdown, clicks the "Create Part" menu item
-(`aria-label="action-menu-add-parts-create-part"`), asserts the "Add Part" modal
-appears, then dismisses. Confirms the modal is correctly wired, not just that the button renders.
-- [ ] Test case 3:  Reader user does NOT see Add button
-      `test('Parts - Add button hidden in Parametric View (reader)')`
+- [x] **Add button opens Create Part form** — `test('Parts - Add button opens Create Part form in Parametric View')`
 
-Logs in as `readeruser` (username: `reader` / password: `readonly`). Switches to
-Parametric View and asserts the Add Parts button has count 0. Verifies the permission
-gate (`hasAddRole`) still works — the button is hidden, not just disabled.
+  Same setup. Clicks the Add Parts dropdown, clicks the "Create Part" menu item (`aria-label="action-menu-add-parts-create-part"`), asserts the "Add Part" modal appears, then dismisses. Confirms the modal is correctly wired, not just that the button renders.
 
-### Integration Tests
+- [x] **Reader user does not see Add button** — `test('Parts - Add button hidden in Parametric View (reader)')`
 
-- [ ] Create part via Parametric View submits to API
-This test exercises the complete flow: open the Add Part modal from Parametric View,
-fill in the name and description, submit the form, wait for the network to settle, then
-assert the new part name is visible on the resulting page — confirming the API created
-the record. Cleans up before and after using `deletePart()` (which calls the API
-directly) to leave the database state unchanged.
+  Logs in as `readeruser` (username: `reader` / password: `readonly`). Switches to Parametric View and asserts the Add Parts button has count 0. Verifies the permission gate (`hasAddRole`) still works.
 
-This is the integration scenario: it validates that the modal's `initialData` is
-correctly forwarded to `ApiEndpoints.part_list`, the API accepts the payload, and the
-frontend navigates to the new part on success (`follow: true` in the modal config).
+### Integration Test
+
+- [x] **Create part via Parametric View submits to API** — `test('Parts - Create part via Parametric View submits to API')`
+
+  Exercises the complete flow: open the Add Part modal from Parametric View, fill in the name and description, submit the form, wait for network idle, then assert the new part name is visible on the resulting page. Confirms the API created the record. Cleans up before and after using `deletePart()` to leave the database unchanged. Validates that `initialData` is forwarded to `ApiEndpoints.part_list`, the API accepts the payload, and the frontend navigates to the new part on success (`follow: true`).
 
 ### Manual Testing
 
@@ -298,77 +280,46 @@ frontend navigates to the new part on success (`follow: true` in the modal confi
 2. Logged in as admin, navigated to `part/category/4/parts` (Electronics — has parametric templates).
 3. Confirmed Add button is visible in **Table View**.
 4. Switched to **Parametric View** — Add Parts button now appears in the toolbar.
-5. Clicked Add Parts → Create Part — modal opens pre-filled with the current category.
+5. Clicked Add Parts > Create Part — modal opens pre-filled with the current category.
 6. Switched back to Table View — no regression, button still present.
 7. Logged in as `reader` — Add Parts button absent in both views (permission gate working).
 8. Navigated to `part/category/5/parts` — button appears in Parametric View there too.
-=======
-### Playwright End-to-End Tests
-
-All tests added to `src/frontend/tests/pages/pui_part.spec.ts`:
-
-- [x] Admin sees the "Add Parts" button after switching to Parametric View
-- [x] Clicking the button opens the Create Part modal with the current category pre-filled
-- [x] A read-only user does not see the Add Parts button in Parametric View
-- [x] Submitting the form from Parametric View creates the part in the database (round-trip integration test)
-
-### Manual Testing
-
-Tested against the InvenTree demo dataset:
-
-- [x] Toggled between Table View and Parametric View multiple times — button persists correctly in both
-- [x] Clicked "Add Parts" > "Create Part" in Parametric View — modal opens with category pre-filled
-- [x] Logged in as a reader user — button is absent in both views
-- [x] Table View behavior is unchanged
-- [x] Other `ParametricDataTable` consumers (no `customActions` passed) render as before
->>>>>>> 7e084cd (Update README)
 
 ---
 
 ## Implementation Notes
 
-<<<<<<< HEAD
-### Week [3] Progress
+### Week 3 Progress
 
-The fix was completed in two files. The core insight was that `ParametricDataTable` — the generic component that backs Parametric View — had no way to accept toolbar-level actions from its callers; it only supported per-row actions. The solution follows the existing `customColumns` / `customFilters` prop-injection pattern already present in the component.
+The fix was completed in two files. The core insight was that `ParametricDataTable` — the generic component that backs Parametric View — had no way to accept toolbar-level actions from its callers; it only supported per-row actions. The solution follows the existing `customColumns`/`customFilters` prop-injection pattern already present in the component.
 
 1. **`ParametricDataTable.tsx`** — added an optional `customActions?: ReactNode[]` prop to the component interface and wired it into the `InvenTreeTable` call as `tableActions: customActions ?? []`. The default of `[]` means every existing caller of `ParametricDataTable` (none of which pass this prop) is completely unaffected.
 
 2. **`ParametricPartTable.tsx`** — imported `useUserState`, `useCreateApiFormModal`, `usePartFields`, `ActionDropdown`, `UserRoles`, `IconPlus`, and `t`. Constructed a `newPart` modal via `useCreateApiFormModal` pointing at `ApiEndpoints.part_list`, pre-seeding `initialData: { category: categoryId }` so new parts default into the current category. Assembled a memoized `tableActions` array containing an `ActionDropdown` gated by `user.hasAddRole(UserRoles.part)` — matching the exact permission gate used in Table View — and passed it to `ParametricDataTable` via the new `customActions` prop.
 
 **Key decisions:**
+
 - Reused the `customColumns`/`customFilters` convention rather than inventing a new pattern — keeps the diff minimal and stays idiomatic with the codebase.
 - Kept the Add dropdown to "Create Part" only (no file import or supplier import actions) — those require additional wizard state that belongs in `PartListTable`, not a generic wrapper. Scope is limited to the reported bug.
 - Used `hidden={!user.hasAddRole(UserRoles.part)}` (not `!user.hasAddPermission(ModelType.part)`) to match Table View's existing behavior exactly.
 
 **Challenges faced:**
+
 - Confirming this was not a permissions bug: traced `hasAddRole` call in `PartTable.tsx` and verified the role check returns `true` for admins in both views — the button was simply never rendered, not hidden by a permission check.
 - Determining the right `initialData` for the new part modal: passing `{ category: categoryId }` ensures the form defaults to the category the user is currently browsing, which is the expected UX.
-### Week [Y] Progress
-
-[Continue documenting as you work]
-
-### Code Changes
-
-- **Files modified:** `src/frontend/src/tables/general/ParametricDataTable.tsx`: Added `customActions?: ReactNode[]` prop; passed to `InvenTreeTable` as `tableActions`,`src/frontend/src/tables/part/ParametricPartTable.tsx`: Added Add Part modal, `ActionDropdown` toolbar action, and `customActions` prop wiring |
-- **Key commits:** https://github.com/hanielee/InvenTree/tree/fix-issue-add-part-button
-- **Approach decisions:** - **Why not modify `CategoryDetail.tsx`?** The bug is that `ParametricDataTable` has no way to surface add actions — fixing it there is a symptom fix. The root fix is making the generic component extensible, so any future parametric table (not just parts) can expose toolbar actions too.
-- **Why keep the dropdown wrapper?** `PartListTable` uses an `ActionDropdown` around the "Create Part" action to allow future actions (import from file, import from supplier) to be added without changing the toolbar layout. Matching that structure keeps the two views visually consistent and leaves room for those actions to be added later.
-=======
-### Phase 1 Progress
-
-Reproduced the bug, traced the root cause to missing `tableActions` wiring in `ParametricDataTable`, designed the fix following the existing `customColumns`/`customFilters` extension pattern, implemented all three file changes, and wrote four Playwright tests covering admin visibility, form opening, read-only hiding, and round-trip part creation.
 
 ### Code Changes
 
 | File | Change |
 |---|---|
 | `src/frontend/src/tables/general/ParametricDataTable.tsx` | Added `customActions?: ReactNode[]` prop, wired to `tableActions` in `InvenTreeTable` |
-| `src/frontend/src/tables/part/ParametricPartTable.tsx` | Added "Add Parts" `ActionDropdown` with `useCreateApiFormModal` and permission gate, passed as `customActions` |
+| `src/frontend/src/tables/part/ParametricPartTable.tsx` | Added Add Part modal, `ActionDropdown` toolbar action, and `customActions` prop wiring |
 | `src/frontend/tests/pages/pui_part.spec.ts` | Added 4 Playwright E2E tests |
 
-**Approach decision:** Followed the existing `customColumns`/`customFilters` prop-injection pattern rather than modifying the internals of `ParametricDataTable`, keeping the generic table decoupled from Part-specific logic.
->>>>>>> 7e084cd (Update README)
+**Approach decisions:**
+
+- **Why not modify `CategoryDetail.tsx`?** The bug is that `ParametricDataTable` has no way to surface add actions — fixing it there is a symptom fix. The root fix is making the generic component extensible, so any future parametric table (not just parts) can expose toolbar actions too.
+- **Why keep the dropdown wrapper?** `PartListTable` uses an `ActionDropdown` around the "Create Part" action to allow future actions (import from file, import from supplier) to be added without changing the toolbar layout. Matching that structure keeps the two views visually consistent.
 
 ---
 
