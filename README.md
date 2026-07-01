@@ -14,7 +14,7 @@
 | **Student** | Hana Lee |
 | **Issue** | [#11385 — add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385) |
 | **Branch** | [`fix-issue-add-part-button`](https://github.com/hanielee/InvenTree/tree/fix-issue-add-part-button) |
-| **Status** | Phase 3 Complete |
+| **Status** | ![Status](https://img.shields.io/badge/phase%20iii-complete-white?labelColor=ffb6c1&style=flat-square) |
 
 ---
 
