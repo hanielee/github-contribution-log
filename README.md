@@ -2,7 +2,7 @@
 　.˚　✦　.　˚　.　✦　.　˚　.　✦　.　˚　.　✦　.　˚　.　✦　.　˚　.　✦　.　˚
 　　　　　　　　⋆₊˚⊹♡　⋆₊˚⊹♡　⋆₊˚⊹♡　⋆₊˚⊹♡
 　　　　　　　⋆｡°✩  open source contribution log  ✩°｡⋆
-　　　　　　　　　hana lee  ·  inventree  ·  ai 301
+　　　　　　　　　hana lee  · ai 301
 　　　　　　　　⋆₊˚⊹♡　⋆₊˚⊹♡　⋆₊˚⊹♡　⋆₊˚⊹♡
 　.˚　✦　.　˚　.　✦　.　˚　.　✦　.　˚　.　✦　.　˚　.　✦　.　˚　.　✦　.　˚
 ```
@@ -14,7 +14,7 @@
 | **Student** | Hana Lee |
 | **Issue** | [#11385 — add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385) |
 | **Branch** | [`fix-issue-add-part-button`](https://github.com/hanielee/InvenTree/tree/fix-issue-add-part-button) |
-| **Status** | ![Status](https://img.shields.io/badge/phase%20iii-complete-white?labelColor=ffb6c1&style=flat-square) |
+| **Status** | Phase 1 Complete |
 
 ---
 
@@ -112,6 +112,16 @@ Both views are mounted by `SegmentedControlPanel` in `CategoryDetail.tsx` (lines
 
 Add an optional `customActions` prop to `ParametricDataTable`, following the same pattern as the existing `customColumns` and `customFilters` props. Then in `ParametricPartTable`, build the same "Add Parts" `ActionDropdown` used by `PartListTable` and pass it in. No backend changes needed since permissions are already handled by `user.hasAddRole`.
 
+The final implementation went further than a single "Create Part" action — it brings Parametric View to full parity with Table View's Add dropdown:
+
+| Action | Behavior |
+|---|---|
+| **Create Part** | Opens the standard Add Part modal, pre-filled with the current category |
+| **Import from File** | Opens an importer session modal, pre-seeded with the current category, then hands off to the global importer overlay |
+| **Import from Supplier** | Opens the existing `ImportPartWizard`, shown only if a supplier plugin is active |
+
+A `refreshRef` was also threaded through `ParametricDataTable` so the table refreshes automatically once an import session completes.
+
 ---
 
 ### Implementation Plan (UMPIRE)
@@ -151,29 +161,42 @@ The fix follows the exact same convention: add a `customActions` prop and pass i
 
 **Step 1 — `ParametricDataTable.tsx`**
 
-Add the prop to the type signature and wire it through:
+Add the `customActions` prop, plus a `refreshRef` so callers can trigger a table refresh externally (needed once an import session finishes):
 
 ```tsx
-customActions?: ReactNode[]
+customActions?: ReactNode[];
+refreshRef?: MutableRefObject<() => void>;
+
+useEffect(() => {
+  if (refreshRef) {
+    refreshRef.current = table.refreshTable;
+  }
+}, [refreshRef, table.refreshTable]);
 
 // inside InvenTreeTable props:
-tableActions={customActions ?? []}
+tableActions: customActions,
 ```
 
 **Step 2 — `ParametricPartTable.tsx`**
 
-Add imports:
+Add imports for the "Add Parts" dropdown, the Add Part modal, the file importer, and the supplier wizard:
 
 ```tsx
 import { UserRoles } from '@lib/enums/Roles';
+import { t } from '@lingui/core/macro';
+import { IconFileUpload, IconPackageImport, IconPlus } from '@tabler/icons-react';
+import { useMemo, useRef } from 'react';
 import { ActionDropdown } from '../../components/items/ActionDropdown';
+import ImportPartWizard from '../../components/wizards/ImportPartWizard';
+import { dataImporterSessionFields } from '../../forms/ImporterForms';
 import { usePartFields } from '../../forms/PartForms';
 import { useCreateApiFormModal } from '../../hooks/UseForm';
+import { usePluginsWithMixin } from '../../hooks/UsePlugins';
+import { openGlobalImporter } from '../../states/ImporterState';
 import { useUserState } from '../../states/UserState';
-import { IconPlus } from '@tabler/icons-react';
 ```
 
-Create the modal:
+Set up the three modals/wizards:
 
 ```tsx
 const newPart = useCreateApiFormModal({
@@ -185,9 +208,20 @@ const newPart = useCreateApiFormModal({
   modelType: ModelType.part,
   keepOpenOption: true
 });
+
+const importParts = useCreateApiFormModal({
+  url: ApiEndpoints.import_session_list,
+  title: t`Import Parts`,
+  fields: importSessionFields,
+  onFormSuccess: (response) =>
+    openGlobalImporter(response.pk, { onClose: tableRefreshRef.current })
+});
+
+const supplierPlugins = usePluginsWithMixin('supplier');
+const importPartWizard = ImportPartWizard({ categoryId });
 ```
 
-Build and pass the action:
+Assemble the dropdown, gating each action independently:
 
 ```tsx
 const tableActions = useMemo(() => [
@@ -196,18 +230,30 @@ const tableActions = useMemo(() => [
     tooltip={t`Add Parts`}
     icon={<IconPlus />}
     hidden={!user.hasAddRole(UserRoles.part)}
-    actions={[{
-      name: t`Create Part`,
-      icon: <IconPlus />,
-      onClick: () => newPart.open()
-    }]}
+    actions={[
+      { name: t`Create Part`, icon: <IconPlus />, onClick: () => newPart.open() },
+      {
+        name: t`Import from File`,
+        icon: <IconFileUpload />,
+        onClick: () => importParts.open(),
+        hidden: !enableImport
+      },
+      {
+        name: t`Import from Supplier`,
+        icon: <IconPackageImport />,
+        hidden: !enableImport || supplierPlugins.length === 0,
+        onClick: () => importPartWizard.openWizard()
+      }
+    ]}
   />
-], [user, newPart]);
+], [user, enableImport, supplierPlugins, newPart.open, importParts.open, importPartWizard.openWizard]);
 ```
 
-**Step 3** — No backend changes. Permissions are already enforced by the API via `user.hasAddRole`.
+An `enableImport` prop (default `true`) lets callers opt out of both import actions and keep only "Create Part".
 
-**Step 4** — Reuse the existing `hasAddRole` gate exactly, so behavior matches Table View with no new permission concepts introduced.
+**Step 3** — No backend changes. Permissions are already enforced by the API via `user.hasAddRole`. `ImportPartWizard` is an existing component, reused as-is rather than rebuilt.
+
+**Step 4** — Reuse the existing `hasAddRole` gate exactly, so behavior matches Table View with no new permission concepts introduced. The supplier import action only appears when a supplier plugin is actually installed and active.
 
 ---
 
@@ -252,74 +298,52 @@ Verification plan:
 
 ## Testing Strategy
 
-All new tests are in `src/frontend/tests/pages/pui_part.spec.ts`. `readeruser` was added to the imports from `'../defaults'` to support the permission test.
+### Playwright End-to-End Tests
 
-### Playwright Tests
+All tests added to `src/frontend/tests/pages/pui_part.spec.ts`:
 
-- [x] **Admin sees Add button in Parametric View** — `test('Parts - Add button visible in Parametric View (admin)')`
-
-  Logs in as the default allaccess user, navigates to `part/category/4/parts`, switches to Parametric View via `showParametricView(page)`, then asserts the button with `aria-label="action-menu-add-parts"` is visible. Directly tests the reported bug.
-
-- [x] **Add button opens Create Part form** — `test('Parts - Add button opens Create Part form in Parametric View')`
-
-  Same setup. Clicks the Add Parts dropdown, clicks the "Create Part" menu item (`aria-label="action-menu-add-parts-create-part"`), asserts the "Add Part" modal appears, then dismisses. Confirms the modal is correctly wired, not just that the button renders.
-
-- [x] **Reader user does not see Add button** — `test('Parts - Add button hidden in Parametric View (reader)')`
-
-  Logs in as `readeruser` (username: `reader` / password: `readonly`). Switches to Parametric View and asserts the Add Parts button has count 0. Verifies the permission gate (`hasAddRole`) still works.
-
-### Integration Test
-
-- [x] **Create part via Parametric View submits to API** — `test('Parts - Create part via Parametric View submits to API')`
-
-  Exercises the complete flow: open the Add Part modal from Parametric View, fill in the name and description, submit the form, wait for network idle, then assert the new part name is visible on the resulting page. Confirms the API created the record. Cleans up before and after using `deletePart()` to leave the database unchanged. Validates that `initialData` is forwarded to `ApiEndpoints.part_list`, the API accepts the payload, and the frontend navigates to the new part on success (`follow: true`).
+- [x] Admin sees the "Add Parts" button after switching to Parametric View
+- [x] Clicking the button opens the Create Part modal with the current category pre-filled
+- [x] A read-only user does not see the Add Parts button in Parametric View
+- [x] Submitting the form from Parametric View creates the part in the database (round-trip integration test)
 
 ### Manual Testing
 
-1. Started backend (`invoke dev.server`) and frontend (`yarn run dev`) with demo data loaded.
-2. Logged in as admin, navigated to `part/category/4/parts` (Electronics — has parametric templates).
-3. Confirmed Add button is visible in **Table View**.
-4. Switched to **Parametric View** — Add Parts button now appears in the toolbar.
-5. Clicked Add Parts > Create Part — modal opens pre-filled with the current category.
-6. Switched back to Table View — no regression, button still present.
-7. Logged in as `reader` — Add Parts button absent in both views (permission gate working).
-8. Navigated to `part/category/5/parts` — button appears in Parametric View there too.
+Tested against the InvenTree demo dataset:
+
+- [x] Toggled between Table View and Parametric View multiple times — button persists correctly in both
+- [x] Clicked "Add Parts" > "Create Part" in Parametric View — modal opens with category pre-filled
+- [x] Clicked "Add Parts" > "Import from File" — importer session opens pre-seeded with the current category, table refreshes after the import closes
+- [x] Confirmed "Import from Supplier" is hidden when no supplier plugin is active, and opens `ImportPartWizard` when one is
+- [x] Logged in as a reader user — button is absent in both views
+- [x] Table View behavior is unchanged
+- [x] Other `ParametricDataTable` consumers (no `customActions` passed) render as before
+
+### Known Gap
+
+The Playwright suite still only covers "Create Part" (visibility, form open, permission gate, round-trip creation). "Import from File" and "Import from Supplier" were added after those tests were written and are not yet covered by automated tests — manual testing only so far.
 
 ---
 
 ## Implementation Notes
 
-### Week 3 Progress
+### Phase 1 Progress
 
-The fix was completed in two files. The core insight was that `ParametricDataTable` — the generic component that backs Parametric View — had no way to accept toolbar-level actions from its callers; it only supported per-row actions. The solution follows the existing `customColumns`/`customFilters` prop-injection pattern already present in the component.
+Reproduced the bug, traced the root cause to missing `tableActions` wiring in `ParametricDataTable`, designed the fix following the existing `customColumns`/`customFilters` extension pattern, implemented all three file changes, and wrote four Playwright tests covering admin visibility, form opening, read-only hiding, and round-trip part creation.
 
-1. **`ParametricDataTable.tsx`** — added an optional `customActions?: ReactNode[]` prop to the component interface and wired it into the `InvenTreeTable` call as `tableActions: customActions ?? []`. The default of `[]` means every existing caller of `ParametricDataTable` (none of which pass this prop) is completely unaffected.
+### Phase 2/3 Progress
 
-2. **`ParametricPartTable.tsx`** — imported `useUserState`, `useCreateApiFormModal`, `usePartFields`, `ActionDropdown`, `UserRoles`, `IconPlus`, and `t`. Constructed a `newPart` modal via `useCreateApiFormModal` pointing at `ApiEndpoints.part_list`, pre-seeding `initialData: { category: categoryId }` so new parts default into the current category. Assembled a memoized `tableActions` array containing an `ActionDropdown` gated by `user.hasAddRole(UserRoles.part)` — matching the exact permission gate used in Table View — and passed it to `ParametricDataTable` via the new `customActions` prop.
-
-**Key decisions:**
-
-- Reused the `customColumns`/`customFilters` convention rather than inventing a new pattern — keeps the diff minimal and stays idiomatic with the codebase.
-- Kept the Add dropdown to "Create Part" only (no file import or supplier import actions) — those require additional wizard state that belongs in `PartListTable`, not a generic wrapper. Scope is limited to the reported bug.
-- Used `hidden={!user.hasAddRole(UserRoles.part)}` (not `!user.hasAddPermission(ModelType.part)`) to match Table View's existing behavior exactly.
-
-**Challenges faced:**
-
-- Confirming this was not a permissions bug: traced `hasAddRole` call in `PartTable.tsx` and verified the role check returns `true` for admins in both views — the button was simply never rendered, not hidden by a permission check.
-- Determining the right `initialData` for the new part modal: passing `{ category: categoryId }` ensures the form defaults to the category the user is currently browsing, which is the expected UX.
+Expanded the "Add Parts" dropdown beyond "Create Part" to match Table View's full feature set: added "Import from File" (wired to `dataImporterSessionFields` and the global importer overlay) and "Import from Supplier" (reusing the existing `ImportPartWizard`, shown only when a supplier plugin is active). Added a `refreshRef` to `ParametricDataTable` so the table refreshes automatically after an import session closes. Added an `enableImport` prop so callers can opt a parametric table out of both import actions and keep only "Create Part".
 
 ### Code Changes
 
 | File | Change |
 |---|---|
-| `src/frontend/src/tables/general/ParametricDataTable.tsx` | Added `customActions?: ReactNode[]` prop, wired to `tableActions` in `InvenTreeTable` |
-| `src/frontend/src/tables/part/ParametricPartTable.tsx` | Added Add Part modal, `ActionDropdown` toolbar action, and `customActions` prop wiring |
-| `src/frontend/tests/pages/pui_part.spec.ts` | Added 4 Playwright E2E tests |
+| `src/frontend/src/tables/general/ParametricDataTable.tsx` | Added `customActions?: ReactNode[]` and `refreshRef?: MutableRefObject<() => void>` props, wired to `tableActions` in `InvenTreeTable` |
+| `src/frontend/src/tables/part/ParametricPartTable.tsx` | Added "Add Parts" `ActionDropdown` with Create Part, Import from File, and Import from Supplier actions, each independently permission/plugin-gated; added `enableImport` prop |
+| `src/frontend/tests/pages/pui_part.spec.ts` | Added 4 Playwright E2E tests covering "Create Part" (visibility, form open, permission gate, round-trip creation) |
 
-**Approach decisions:**
-
-- **Why not modify `CategoryDetail.tsx`?** The bug is that `ParametricDataTable` has no way to surface add actions — fixing it there is a symptom fix. The root fix is making the generic component extensible, so any future parametric table (not just parts) can expose toolbar actions too.
-- **Why keep the dropdown wrapper?** `PartListTable` uses an `ActionDropdown` around the "Create Part" action to allow future actions (import from file, import from supplier) to be added without changing the toolbar layout. Matching that structure keeps the two views visually consistent.
+**Approach decision:** Followed the existing `customColumns`/`customFilters` prop-injection pattern rather than modifying the internals of `ParametricDataTable`, keeping the generic table decoupled from Part-specific logic. For the import actions, reused `ImportPartWizard` and `dataImporterSessionFields` as-is instead of building parallel import logic for Parametric View.
 
 ---
 
@@ -331,7 +355,7 @@ The fix was completed in two files. The core insight was that `ParametricDataTab
 
 **Draft description:**
 
-> Fixes #11385. The "Add Part" button was absent in Parametric View because `ParametricDataTable` had no mechanism for table-level toolbar actions and `ParametricPartTable` never supplied one. This PR adds an optional `customActions` prop to `ParametricDataTable` (following the same pattern as `customColumns` and `customFilters`) and wires the existing permission-gated "Add Parts" `ActionDropdown` into `ParametricPartTable`. No backend changes. Four Playwright tests added.
+> Fixes #11385. The "Add Part" button was absent in Parametric View because `ParametricDataTable` had no mechanism for table-level toolbar actions and `ParametricPartTable` never supplied one. This PR adds an optional `customActions` prop to `ParametricDataTable` (following the same pattern as `customColumns` and `customFilters`) and wires the existing permission-gated "Add Parts" `ActionDropdown` into `ParametricPartTable` — matching Table View's full dropdown, including Create Part, Import from File, and Import from Supplier. A `refreshRef` was added so the table refreshes after an import completes. No backend changes. Four Playwright tests cover the "Create Part" path; the two import actions are manually verified but not yet covered by automated tests.
 
 ---
 
