@@ -12,7 +12,7 @@
 | | |
 |---|---|
 | **Student** | Hana Lee |
-| **Issue** | [#11385 — add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385) |
+| **Issue** | [#11385: add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385) |
 | **Branch** | [`fix-issue-add-parts-button`](https://github.com/hanielee/InvenTree/tree/fix-issue-add-parts-button) |
 | **Pull Request** | [inventree/InvenTree#12392](https://github.com/inventree/InvenTree/pull/12392) |
 | **Status** | ![Status](https://img.shields.io/badge/phase%20iv-iterating-white?labelColor=ffb6c1&style=flat-square) |
@@ -83,13 +83,13 @@ yarn run dev
 |---|---|
 | Parametric View showed no parameter columns, making it unclear whether the page loaded at all. | Switched to a category with active parameter templates (e.g. the demo "Electronics: Capacitors/Resistors" categories) so the table renders meaningfully. |
 | Needed to confirm the Add button is permission-gated, not globally removed. | Verified in `PartTable.tsx` that the Add dropdown is hidden only via `hidden={!user.hasAddRole(UserRoles.part)}`, so an admin should always see it. |
-| Locating the divergence between the two views. | Traced the `SegmentedControlPanel` in `CategoryDetail.tsx` — each view renders a different component (`PartListTable` vs `ParametricPartTable`), which is the source of the inconsistency. |
+| Locating the divergence between the two views. | Traced the `SegmentedControlPanel` in `CategoryDetail.tsx`: each view renders a different component (`PartListTable` vs `ParametricPartTable`), which is the source of the inconsistency. |
 
 ### Steps to Reproduce
 
 1. Start the backend and frontend dev servers and log in as an admin.
 2. Navigate to a Part **Category** detail page, e.g. `part/category/<id>/parts`.
-3. Open the **Parts** tab. The view defaults to **Table View** — note the **Add Parts** button in the toolbar.
+3. Open the **Parts** tab. The view defaults to **Table View**; note the **Add Parts** button in the toolbar.
 4. Use the segmented control to switch to **Parametric View**.
 5. **Observed:** the Add button disappears. Only per-row actions ("Add Parameter") remain with no way to create a new part.
 6. **Expected:** the Add button stays visible based on the user's `part` add permission, exactly as in Table View.
@@ -100,7 +100,7 @@ yarn run dev
 
 ### Root Cause Analysis
 
-`ParametricDataTable` has no mechanism for table-level toolbar actions, and `ParametricPartTable` never supplies an "Add Part" action. This is not a permissions bug — the button is simply never rendered.
+`ParametricDataTable` has no mechanism for table-level toolbar actions, and `ParametricPartTable` never supplies an "Add Part" action. This is not a permissions bug: the button is simply never rendered.
 
 Both views are mounted by `SegmentedControlPanel` in `CategoryDetail.tsx` (lines 282-309), but they use completely separate components:
 
@@ -115,7 +115,7 @@ Both views are mounted by `SegmentedControlPanel` in `CategoryDetail.tsx` (lines
 
 Add an optional `customActions` prop to `ParametricDataTable`, following the same pattern as the existing `customColumns` and `customFilters` props. Then in `ParametricPartTable`, build the same "Add Parts" `ActionDropdown` used by `PartListTable` and pass it in. No backend changes needed since permissions are already handled by `user.hasAddRole`.
 
-The final implementation went further than a single "Create Part" action — it brings Parametric View to full parity with Table View's Add dropdown:
+The final implementation went further than a single "Create Part" action, bringing Parametric View to full parity with Table View's Add dropdown:
 
 | Action | Behavior |
 |---|---|
@@ -129,7 +129,7 @@ A `refreshRef` was also threaded through `ParametricDataTable` so the table refr
 
 The first version of the fix duplicated the entire "Add Parts" dropdown (modals, wizard, `ActionDropdown`) inside `ParametricPartTable`, on top of the copy that already existed in `PartListTable`. A maintainer flagged this during review:
 
-> "The combination of 'create new part' / 'import parts' is a repeated pattern here — I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations."
+> "The combination of 'create new part' / 'import parts' is a repeated pattern here, I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations."
 
 In response, the entire dropdown (Create Part, Import from File, Import from Supplier, and their associated modals/wizard) was extracted into a new shared component, `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Both `PartListTable` and `ParametricPartTable` now render `<PartCreationMenu />` instead of maintaining separate copies of the same logic.
 
@@ -137,7 +137,7 @@ In response, the entire dropdown (Create Part, Import from File, Import from Sup
 
 ### Implementation Plan (UMPIRE)
 
-#### U — Understand
+#### U: Understand
 
 Two different components back the same "Parts" panel:
 
@@ -156,7 +156,7 @@ hidden={!user.hasAddRole(UserRoles.part)}
 
 ---
 
-#### M — Match
+#### M: Match
 
 The extension pattern already exists in the codebase. `ParametricDataTable` accepts `customColumns` and `customFilters` and merges them in:
 
@@ -168,9 +168,9 @@ The fix follows the exact same convention: add a `customActions` prop and pass i
 
 ---
 
-#### P — Plan
+#### P: Plan
 
-**Step 1 — `ParametricDataTable.tsx`**
+**Step 1: `ParametricDataTable.tsx`**
 
 Add the `customActions` prop, plus a `refreshRef` so callers can trigger a table refresh externally (needed once an import session finishes):
 
@@ -188,7 +188,7 @@ useEffect(() => {
 tableActions: customActions,
 ```
 
-**Step 2 — `ParametricPartTable.tsx`**
+**Step 2: `ParametricPartTable.tsx`**
 
 Add imports for the "Add Parts" dropdown, the Add Part modal, the file importer, and the supplier wizard:
 
@@ -262,20 +262,20 @@ const tableActions = useMemo(() => [
 
 An `enableImport` prop (default `true`) lets callers opt out of both import actions and keep only "Create Part".
 
-**Step 3** — No backend changes. Permissions are already enforced by the API via `user.hasAddRole`. `ImportPartWizard` is an existing component, reused as-is rather than rebuilt.
+**Step 3:** No backend changes. Permissions are already enforced by the API via `user.hasAddRole`. `ImportPartWizard` is an existing component, reused as-is rather than rebuilt.
 
-**Step 4** — Reuse the existing `hasAddRole` gate exactly, so behavior matches Table View with no new permission concepts introduced. The supplier import action only appears when a supplier plugin is actually installed and active.
+**Step 4:** Reuse the existing `hasAddRole` gate exactly, so behavior matches Table View with no new permission concepts introduced. The supplier import action only appears when a supplier plugin is actually installed and active.
 
 ---
 
-#### I — Implement
+#### I: Implement
 
 Branch: https://github.com/hanielee/InvenTree/tree/fix-issue-add-parts-button
 PR: https://github.com/inventree/InvenTree/pull/12392
 
 ---
 
-#### R — Review
+#### R: Review
 
 - Branch off `master`, one bugfix per branch/PR (no direct pushes to `master`)
 - Run pre-commit hooks and frontend checks before committing:
@@ -292,19 +292,19 @@ PR: https://github.com/inventree/InvenTree/pull/12392
 
 ---
 
-#### E — Evaluate
+#### E: Evaluate
 
 InvenTree uses Playwright E2E tests in `src/frontend/tests/`. The parametric view is already exercised via the `showParametricView(page)` helper in `src/frontend/tests/helpers.ts`.
 
 Verification plan:
 
-1. **Playwright tests** — assert Add button is visible for admin, absent for reader, and run a round-trip form submission test
+1. **Playwright tests:** assert Add button is visible for admin, absent for reader, and run a round-trip form submission test
 2. **Full suite:**
    ```bash
    cd src/frontend && yarn run test
    ```
-3. **Manual** — toggle between Table and Parametric View, confirm button persists, click through to form, verify category pre-fill, test with a reader account
-4. **Regression** — confirm Table View is unchanged and other `ParametricDataTable` consumers (no `customActions` passed) render as before
+3. **Manual:** toggle between Table and Parametric View, confirm button persists, click through to form, verify category pre-fill, test with a reader account
+4. **Regression:** confirm Table View is unchanged and other `ParametricDataTable` consumers (no `customActions` passed) render as before
 
 ---
 
@@ -323,17 +323,17 @@ All tests added to `src/frontend/tests/pages/pui_part.spec.ts`:
 
 Tested against the InvenTree demo dataset:
 
-- [x] Toggled between Table View and Parametric View multiple times — button persists correctly in both
-- [x] Clicked "Add Parts" > "Create Part" in Parametric View — modal opens with category pre-filled
-- [x] Clicked "Add Parts" > "Import from File" — importer session opens pre-seeded with the current category, table refreshes after the import closes
+- [x] Toggled between Table View and Parametric View multiple times: button persists correctly in both
+- [x] Clicked "Add Parts" > "Create Part" in Parametric View: modal opens with category pre-filled
+- [x] Clicked "Add Parts" > "Import from File": importer session opens pre-seeded with the current category, table refreshes after the import closes
 - [x] Confirmed "Import from Supplier" is hidden when no supplier plugin is active, and opens `ImportPartWizard` when one is
-- [x] Logged in as a reader user — button is absent in both views
+- [x] Logged in as a reader user: button is absent in both views
 - [x] Table View behavior is unchanged
 - [x] Other `ParametricDataTable` consumers (no `customActions` passed) render as before
 
 ### Known Gap
 
-The Playwright suite still only covers "Create Part" (visibility, form open, permission gate, round-trip creation). "Import from File" and "Import from Supplier" were added after those tests were written and are not yet covered by automated tests — manual testing only so far.
+The Playwright suite still only covers "Create Part" (visibility, form open, permission gate, round-trip creation). "Import from File" and "Import from Supplier" were added after those tests were written and are not yet covered by automated tests; manual testing only so far.
 
 ---
 
@@ -375,9 +375,9 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 **PR Description:**
 
-> Users lose the ability to add parts as soon as they switch a Part Category view from Table View to Parametric View. The "Add Parts" button simply disappears from the toolbar, with no error and no indication that anything is wrong — only the per-row "Add Parameter" action remains. Since Parametric View is meant to be a different way of *looking at* the same part list, not a different *feature set*, this is a functional regression for anyone who prefers or needs to work in that view.
+> Users lose the ability to add parts as soon as they switch a Part Category view from Table View to Parametric View. The "Add Parts" button simply disappears from the toolbar, with no error and no indication that anything is wrong; only the per-row "Add Parameter" action remains. Since Parametric View is meant to be a different way of *looking at* the same part list, not a different *feature set*, this is a functional regression for anyone who prefers or needs to work in that view.
 >
-> The root cause is architectural rather than a permissions bug: `PartListTable` (Table View) and `ParametricPartTable` (Parametric View) are two separate components, and only `PartListTable` builds a toolbar `tableActions` array. The generic `ParametricDataTable` that Parametric View wraps has no concept of table-level actions at all — it only supports per-row actions. So the button isn't hidden by a broken permission check, it was simply never wired up for that view.
+> The root cause is architectural rather than a permissions bug: `PartListTable` (Table View) and `ParametricPartTable` (Parametric View) are two separate components, and only `PartListTable` builds a toolbar `tableActions` array. The generic `ParametricDataTable` that Parametric View wraps has no concept of table-level actions at all; it only supports per-row actions. So the button isn't hidden by a broken permission check, it was simply never wired up for that view.
 >
 > This PR closes #11385 by:
 > - Adding an optional `customActions` prop to `ParametricDataTable`, following the same prop-injection convention already used for `customColumns`/`customFilters`.
@@ -389,13 +389,13 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 > - [x] Tests added (Playwright, `pui_part.spec.ts`)
 > - [x] Tests passing locally (`yarn run test`)
 > - [x] Lint / type-check passing (`yarn run lint`, `tsc --noEmit`)
-> - [x] No breaking changes — `customActions`/`refreshRef` are optional, existing `ParametricDataTable` callers unaffected
+> - [x] No breaking changes: `customActions`/`refreshRef` are optional, existing `ParametricDataTable` callers unaffected
 > - [ ] Automated test coverage for Import from File / Import from Supplier (tracked as a follow-up, currently manual-only)
 >
 > **Before:** Add Parts button visible in Table View, absent in Parametric View.
-(https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTk3MTIsIm5iZiI6MTc4NDA1OTQxMiwicGF0aCI6Ii82NDcwODQvNTUyMzAxMzAyLWMxYWZiNGUwLTU1MmUtNDQ1Yy1iOWViLWRmMmU0NmE5Mzk0YS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNzE0JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDcxNFQyMDAzMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03NzlhMGI1YTJmNTVjYjA3OTNhYmI1NWRkN2FhYzhiZTdmMzMyYzhjNGRiM2QwOTJlNTJhN2RiOTgxODU5YzNhJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.sj4NucnyvtZ2POD0rlhTJlxeEi0EWNmlu_9EM9dJY28)
+> ![BEFORE](https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTk3MTIsIm5iZiI6MTc4NDA1OTQxMiwicGF0aCI6Ii82NDcwODQvNTUyMzAxMzAyLWMxYWZiNGUwLTU1MmUtNDQ1Yy1iOWViLWRmMmU0NmE5Mzk0YS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNzE0JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDcxNFQyMDAzMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03NzlhMGI1YTJmNTVjYjA3OTNhYmI1NWRkN2FhYzhiZTdmMzMyYzhjNGRiM2QwOTJlNTJhN2RiOTgxODU5YzNhJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.sj4NucnyvtZ2POD0rlhTJlxeEi0EWNmlu_9EM9dJY28)
 > **After:** Add Parts dropdown present and permission-gated identically in both views.
-(https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTg5ODgsIm5iZiI6MTc4NDA1ODY4OCwicGF0aCI6Ii80NzcwMTQ2OS82MjEyMjAzNjQtYTUzN2I2YzMtOTgyMi00MThjLWFjZTktOTdjNDU1YzhlODRjLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA3MTQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNzE0VDE5NTEyOFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA0NzQ2MTQzZTU1ODE2Y2UwNTBlY2JlYWFmN2I3MWFjMTQ0M2FjZThjM2M1MjQwNWExZjUxZWVmMWI3OTExMTgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.4mDSKdHUMwqpmOYaG2crybh3IAxUn41k30EkvHM1qwQ)
+![AFTER](https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTg5ODgsIm5iZiI6MTc4NDA1ODY4OCwicGF0aCI6Ii80NzcwMTQ2OS82MjEyMjAzNjQtYTUzN2I2YzMtOTgyMi00MThjLWFjZTktOTdjNDU1YzhlODRjLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA3MTQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNzE0VDE5NTEyOFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA0NzQ2MTQzZTU1ODE2Y2UwNTBlY2JlYWFmN2I3MWFjMTQ0M2FjZThjM2M1MjQwNWExZjUxZWVmMWI3OTExMTgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.4mDSKdHUMwqpmOYaG2crybh3IAxUn41k30EkvHM1qwQ)
 > Closes #11385.
 
 
@@ -403,7 +403,7 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 | Date | Reviewer Comment | My Response |
 |---|---|---|
-| 2026-07-13 | "The combination of 'create new part' / 'import parts' is a repeated pattern here — I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations." | Extracted the dropdown, its modals, and the supplier wizard into a new `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Updated both `PartListTable` and `ParametricPartTable` to render `<PartCreationMenu />` instead of maintaining duplicate copies (built on top of the original fix in commit `1370a9d7f`). About to push the follow-up commit to the PR branch; awaiting re-review. |
+| 2026-07-13 | "The combination of 'create new part' / 'import parts' is a repeated pattern here, I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations." | Extracted the dropdown, its modals, and the supplier wizard into a new `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Updated both `PartListTable` and `ParametricPartTable` to render `<PartCreationMenu />` instead of maintaining duplicate copies (built on top of the original fix in commit `1370a9d7f`). About to push the follow-up commit to the PR branch; awaiting re-review. |
 
 ---
 
@@ -415,8 +415,8 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 - Practiced the prop-injection extension pattern used throughout this codebase (`customColumns`, `customFilters`, now `customActions`) rather than hardcoding feature logic into shared components.
 - Got hands-on with `useCreateApiFormModal` and how InvenTree's form hooks connect to API endpoints.
 - Wrote Playwright tests for a real open source project, including a full round-trip integration test that creates and deletes a part.
-- Learned to recognize duplication *while writing it* rather than only after review — copying the dropdown into `ParametricPartTable` was the fastest path to a working fix, but it wasn't the right end state, and a maintainer caught what I should have caught myself.
-- Practiced extracting a shared component (`PartCreationMenu`) from two call sites with slightly different needs (`PartListTable` passes `basePartInstance` for duplication, `ParametricPartTable` doesn't) — designing the prop surface so both callers stay simple.
+- Learned to recognize duplication *while writing it* rather than only after review. Copying the dropdown into `ParametricPartTable` was the fastest path to a working fix, but it wasn't the right end state, and a maintainer caught what I should have caught myself.
+- Practiced extracting a shared component (`PartCreationMenu`) from two call sites with slightly different needs (`PartListTable` passes `basePartInstance` for duplication, `ParametricPartTable` doesn't), designing the prop surface so both callers stay simple.
 
 ### Challenges Overcome
 
@@ -428,7 +428,7 @@ The second real challenge came after submitting the PR: taking the "offload this
 
 ### What I'd Do Differently Next Time
 
-Set up the full dev environment and load sample data before diving into the code — I spent time wondering if the page had actually loaded when the issue was just missing demo data. I'd also look harder, before opening the PR, at whether my fix was introducing duplication with an existing pattern (`PartListTable`'s dropdown) rather than waiting for a reviewer to point it out — the signal was there in the original diff (an almost line-for-line copy of `PartTable.tsx`'s `ActionDropdown`) and I should have caught it myself.
+Set up the full dev environment and load sample data before diving into the code. I spent time wondering if the page had actually loaded when the issue was just missing demo data. I'd also look harder, before opening the PR, at whether my fix was introducing duplication with an existing pattern (`PartListTable`'s dropdown) rather than waiting for a reviewer to point it out. The signal was there in the original diff (an almost line-for-line copy of `PartTable.tsx`'s `ActionDropdown`) and I should have caught it myself.
 
 ---
 
@@ -436,7 +436,7 @@ Set up the full dev environment and load sample data before diving into the code
 
 - [InvenTree CONTRIBUTING.md](https://github.com/inventree/InvenTree/blob/master/CONTRIBUTING.md)
 - [InvenTree issue #11385](https://github.com/inventree/InvenTree/issues/11385)
-- [InvenTree PR #12392](https://github.com/inventree/InvenTree/pull/12392) — my pull request and review thread
-- [`PartTable.tsx`](https://github.com/inventree/InvenTree/blob/master/src/frontend/src/tables/part/PartTable.tsx) — reference for the existing Add button pattern
+- [InvenTree PR #12392](https://github.com/inventree/InvenTree/pull/12392): my pull request and review thread
+- [`PartTable.tsx`](https://github.com/inventree/InvenTree/blob/master/src/frontend/src/tables/part/PartTable.tsx): reference for the existing Add button pattern
 - [Playwright docs: locators](https://playwright.dev/docs/locators)
 - [InvenTree frontend tests](https://github.com/inventree/InvenTree/tree/master/src/frontend/tests)
