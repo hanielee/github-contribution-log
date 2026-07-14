@@ -392,15 +392,12 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 > - [x] No breaking changes — `customActions`/`refreshRef` are optional, existing `ParametricDataTable` callers unaffected
 > - [ ] Automated test coverage for Import from File / Import from Supplier (tracked as a follow-up, currently manual-only)
 >
-> **Before:** Add button visible in Table View, absent in Parametric View.
-> **After:** Add Parts dropdown (Create Part / Import from File / Import from Supplier) present and permission-gated identically in both views.
->
-> _Screenshots of both views to be attached to the PR._
->
+> **Before:** Add Parts button visible in Table View, absent in Parametric View.
+(https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTk3MTIsIm5iZiI6MTc4NDA1OTQxMiwicGF0aCI6Ii82NDcwODQvNTUyMzAxMzAyLWMxYWZiNGUwLTU1MmUtNDQ1Yy1iOWViLWRmMmU0NmE5Mzk0YS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNzE0JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDcxNFQyMDAzMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03NzlhMGI1YTJmNTVjYjA3OTNhYmI1NWRkN2FhYzhiZTdmMzMyYzhjNGRiM2QwOTJlNTJhN2RiOTgxODU5YzNhJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.sj4NucnyvtZ2POD0rlhTJlxeEi0EWNmlu_9EM9dJY28)
+> **After:** Add Parts dropdown present and permission-gated identically in both views.
+(https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTg5ODgsIm5iZiI6MTc4NDA1ODY4OCwicGF0aCI6Ii80NzcwMTQ2OS82MjEyMjAzNjQtYTUzN2I2YzMtOTgyMi00MThjLWFjZTktOTdjNDU1YzhlODRjLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA3MTQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNzE0VDE5NTEyOFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA0NzQ2MTQzZTU1ODE2Y2UwNTBlY2JlYWFmN2I3MWFjMTQ0M2FjZThjM2M1MjQwNWExZjUxZWVmMWI3OTExMTgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.4mDSKdHUMwqpmOYaG2crybh3IAxUn41k30EkvHM1qwQ)
 > Closes #11385.
 
-> [!IMPORTANT]
-> **TODO before final submission:** attach actual before/after screenshots (Table View vs. Parametric View, Add Parts dropdown open) to the PR and embed them here.
 
 ### Maintainer Feedback
 
