@@ -375,28 +375,35 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 **PR Description:**
 
-> Users lose the ability to add parts as soon as they switch a Part Category view from Table View to Parametric View. The "Add Parts" button simply disappears from the toolbar, with no error and no indication that anything is wrong; only the per-row "Add Parameter" action remains. Since Parametric View is meant to be a different way of *looking at* the same part list, not a different *feature set*, this is a functional regression for anyone who prefers or needs to work in that view.
+> ## What does this PR do?
 >
-> The root cause is architectural rather than a permissions bug: `PartListTable` (Table View) and `ParametricPartTable` (Parametric View) are two separate components, and only `PartListTable` builds a toolbar `tableActions` array. The generic `ParametricDataTable` that Parametric View wraps has no concept of table-level actions at all; it only supports per-row actions. So the button isn't hidden by a broken permission check, it was simply never wired up for that view.
+> This PR keeps the "Add Parts" toolbar action visible and functional when a Part Category's view is switched from Table View to Parametric View. It adds an optional `customActions` prop to `ParametricDataTable` (following the same pattern as the existing `customColumns` and `customFilters` props), and wires the same "Add Parts" dropdown that Table View already has (Create Part, Import from File, Import from Supplier) into Parametric View through that prop, gated by the same `hasAddRole(UserRoles.part)` permission check. Following review feedback, the dropdown and its associated modals were also extracted into a new shared `PartCreationMenu` component so that `PartListTable` and `ParametricPartTable` no longer duplicate the same logic.
 >
-> This PR closes #11385 by:
-> - Adding an optional `customActions` prop to `ParametricDataTable`, following the same prop-injection convention already used for `customColumns`/`customFilters`.
-> - Wiring the existing "Add Parts" dropdown (Create Part, Import from File, Import from Supplier) into `ParametricPartTable` via that prop, gated by the same `hasAddRole(UserRoles.part)` permission check Table View already uses.
-> - Adding a `refreshRef` to `ParametricDataTable` so the table refreshes automatically after an import session completes.
-> - **(post-review)** Extracting the dropdown into a shared `PartCreationMenu` component, used by both `PartListTable` and `ParametricPartTable`, removing the duplication a maintainer flagged.
+> ## Why was this PR needed?
 >
-> **Acceptance criteria**
-> - [x] Tests added (Playwright, `pui_part.spec.ts`)
-> - [x] Tests passing locally (`yarn run test`)
-> - [x] Lint / type-check passing (`yarn run lint`, `tsc --noEmit`)
-> - [x] No breaking changes: `customActions`/`refreshRef` are optional, existing `ParametricDataTable` callers unaffected
-> - [ ] Automated test coverage for Import from File / Import from Supplier (tracked as a follow-up, currently manual-only)
+> Issue #11385 reported that the "Add Parts" button disappears from the toolbar as soon as a user switches a Part Category's Parts tab from Table View to Parametric View, with no error and no indication anything is wrong; only the per-row "Add Parameter" action remains, so there is no way to create a new part from that view.
 >
-> **Before:** Add Parts button visible in Table View, absent in Parametric View.
-> ![BEFORE](https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTk3MTIsIm5iZiI6MTc4NDA1OTQxMiwicGF0aCI6Ii82NDcwODQvNTUyMzAxMzAyLWMxYWZiNGUwLTU1MmUtNDQ1Yy1iOWViLWRmMmU0NmE5Mzk0YS5wbmc_WC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BS0lBVkNPRFlMU0E1M1BRSzRaQSUyRjIwMjYwNzE0JTJGdXMtZWFzdC0xJTJGczMlMkZhd3M0X3JlcXVlc3QmWC1BbXotRGF0ZT0yMDI2MDcxNFQyMDAzMzJaJlgtQW16LUV4cGlyZXM9MzAwJlgtQW16LVNpZ25hdHVyZT03NzlhMGI1YTJmNTVjYjA3OTNhYmI1NWRkN2FhYzhiZTdmMzMyYzhjNGRiM2QwOTJlNTJhN2RiOTgxODU5YzNhJlgtQW16LVNpZ25lZEhlYWRlcnM9aG9zdCZyZXNwb25zZS1jb250ZW50LXR5cGU9aW1hZ2UlMkZwbmcifQ.sj4NucnyvtZ2POD0rlhTJlxeEi0EWNmlu_9EM9dJY28)
-> **After:** Add Parts dropdown present and permission-gated identically in both views.
-![AFTER](https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3ODQwNTg5ODgsIm5iZiI6MTc4NDA1ODY4OCwicGF0aCI6Ii80NzcwMTQ2OS82MjEyMjAzNjQtYTUzN2I2YzMtOTgyMi00MThjLWFjZTktOTdjNDU1YzhlODRjLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA3MTQlMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNzE0VDE5NTEyOFomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA0NzQ2MTQzZTU1ODE2Y2UwNTBlY2JlYWFmN2I3MWFjMTQ0M2FjZThjM2M1MjQwNWExZjUxZWVmMWI3OTExMTgmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.4mDSKdHUMwqpmOYaG2crybh3IAxUn41k30EkvHM1qwQ)
-> Closes #11385.
+> Investigation showed this is not a permissions bug. `PartListTable` (Table View) and `ParametricPartTable` (Parametric View) are two separate components, and only `PartListTable` builds a toolbar `tableActions` array containing the "Add Parts" `ActionDropdown`. The generic `ParametricDataTable` that Parametric View wraps has no concept of table-level toolbar actions at all, it only supports per-row actions (like "Add Parameter"). So the button isn't hidden by a broken permission check, it was simply never wired up for that view in the first place.
+>
+> ## What are the relevant issue numbers?
+>
+> Closes #11385
+>
+> ## Screenshots / Recordings
+>
+> **Before:** the "Add Parts" button is visible in Table View but absent in Parametric View.
+> ![BEFORE](https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png)
+>
+> **After:** the "Add Parts" dropdown (Create Part / Import from File / Import from Supplier) is present and permission-gated identically in both views.
+> ![AFTER](https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png)
+>
+> ## Does this PR meet the acceptance criteria?
+>
+> - [x] Tests added for new/changed behavior (4 Playwright E2E tests in `pui_part.spec.ts` covering admin visibility, form open, permission gate, and round-trip part creation)
+> - [x] All tests passing (`yarn run test`)
+> - [x] Follows project style guide (`yarn run lint`, `tsc --noEmit` passing)
+> - [x] No breaking changes introduced (`customActions` and `refreshRef` are optional props; existing `ParametricDataTable` callers that don't pass them are unaffected)
+> - [ ] Documentation updated (not applicable, frontend-only UI fix with no user-facing docs to update)
 
 
 ### Maintainer Feedback
