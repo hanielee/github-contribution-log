@@ -15,7 +15,7 @@
 | **Issue** | [#11385: add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385) |
 | **Branch** | [`fix-issue-add-parts-button`](https://github.com/hanielee/InvenTree/tree/fix-issue-add-parts-button) |
 | **Pull Request** | [inventree/InvenTree#12392](https://github.com/inventree/InvenTree/pull/12392) |
-| **Status** | ![Status](https://img.shields.io/badge/phase%20iv-iterating-white?labelColor=ffb6c1&style=flat-square) |
+| **Status** | ![Status](https://img.shields.io/badge/phase%20iv-approved-white?labelColor=ffb6c1&style=flat-square) |
 
 ---
 
@@ -349,7 +349,7 @@ Expanded the "Add Parts" dropdown beyond "Create Part" to match Table View's ful
 
 ### Phase 4 Progress
 
-Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against `inventree/InvenTree:master`. In review, a maintainer pointed out that the "Add Parts" dropdown was now duplicated between `PartListTable` and `ParametricPartTable`. Extracted the shared logic into a new `PartCreationMenu` component and updated both tables to use it, removing the duplicated modals/wizard/`ActionDropdown` code from each. See [Maintainer Feedback](#maintainer-feedback) below.
+Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against `inventree/InvenTree:master`. In review, a maintainer pointed out that the "Add Parts" dropdown was now duplicated between `PartListTable` and `ParametricPartTable`. Extracted the shared logic into a new `PartCreationMenu` component and updated both tables to use it, removing the duplicated modals/wizard/`ActionDropdown` code from each. Pushed the follow-up commit and requested re-review. The maintainer re-reviewed and approved the PR; it is now waiting to be merged. See [Maintainer Feedback](#maintainer-feedback) below.
 
 ### Code Changes
 
@@ -369,7 +369,7 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 **PR Link:** [inventree/InvenTree#12392](https://github.com/inventree/InvenTree/pull/12392)
 
-**Status:** Iterating (addressed one round of review feedback, awaiting re-review)
+**Status:** Approved, awaiting merge
 
 **Title:** `[UI] Keep Add Parts button visible in Parametric View`
 
@@ -403,7 +403,8 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 | Date | Reviewer Comment | My Response |
 |---|---|---|
-| 2026-07-13 | "The combination of 'create new part' / 'import parts' is a repeated pattern here, I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations." | Extracted the dropdown, its modals, and the supplier wizard into a new `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Updated both `PartListTable` and `ParametricPartTable` to render `<PartCreationMenu />` instead of maintaining duplicate copies (built on top of the original fix in commit `1370a9d7f`). About to push the follow-up commit to the PR branch; awaiting re-review. |
+| 2026-07-13 | "The combination of 'create new part' / 'import parts' is a repeated pattern here, I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations." | Extracted the dropdown, its modals, and the supplier wizard into a new `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Updated both `PartListTable` and `ParametricPartTable` to render `<PartCreationMenu />` instead of maintaining duplicate copies. Pushed as commit `1e3ae8573` ("[UI] Add PartCreationMenu component for shared part creation actions"), built on top of the original fix in `1370a9d7f`. |
+| 2026-07-15 | Maintainer re-reviewed the `PartCreationMenu` refactor and approved the PR. | No further changes requested. PR is approved and awaiting merge into `master`. |
 
 ---
 
