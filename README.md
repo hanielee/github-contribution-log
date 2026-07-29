@@ -286,7 +286,7 @@ PR: https://github.com/inventree/InvenTree/pull/12392
   ```
 
 - PR title follows the `[UI]` prefix convention used in recent frontend commits:
-  `[UI] Keep Add Part button visible in Parametric View`
+  `[UI] Keep Add Parts button visible in Parametric View`
 - Reference issue #11385 in the PR description
 - Confirm the new `customActions` prop is optional so other `ParametricDataTable` callers are unaffected
 
@@ -349,7 +349,7 @@ Expanded the "Add Parts" dropdown beyond "Create Part" to match Table View's ful
 
 ### Phase 4 Progress
 
-Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against `inventree/InvenTree:master`. In review, a maintainer pointed out that the "Add Parts" dropdown was now duplicated between `PartListTable` and `ParametricPartTable`. Extracted the shared logic into a new `PartCreationMenu` component and updated both tables to use it, removing the duplicated modals/wizard/`ActionDropdown` code from each. Pushed the follow-up commit and requested re-review. The maintainer re-reviewed and approved the PR; it is now waiting to be merged. See [Maintainer Feedback](#maintainer-feedback) below.
+Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against `inventree/InvenTree:master`. In review, a maintainer pointed out that the "Add Parts" dropdown was now duplicated between `PartListTable` and `ParametricPartTable`. Extracted the shared logic into a new `PartCreationMenu` component and updated both tables to use it, removing the duplicated modals/wizard/`ActionDropdown` code from each. Pushed the follow-up commit and requested re-review. The maintainer re-reviewed and approved the PR. Before merge, some CI checks were failing; I @mentioned the maintainer directly on the PR to ask whether they were blockers, and they clarified the frontend test failures were pre-existing flaky tests but asked me to fix the `prek` (pre-commit) check. Fixed the import formatting issue causing that failure and pushed a follow-up commit. PR is now waiting to be merged. See [Maintainer Feedback](#maintainer-feedback) below.
 
 ### Code Changes
 
@@ -360,6 +360,7 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 | `src/frontend/src/tables/part/ParametricPartTable.tsx` | Replaced the inline "Add Parts" dropdown with `<PartCreationMenu />` |
 | `src/frontend/src/tables/part/PartTable.tsx` | Replaced the inline "Add Parts" dropdown with `<PartCreationMenu />`, removing the now-duplicated modal/wizard code |
 | `src/frontend/tests/pages/pui_part.spec.ts` | Added 4 Playwright E2E tests covering "Create Part" (visibility, form open, permission gate, round-trip creation) |
+| `src/frontend/src/tables/part/PartTable.tsx` (commit `465dcffed`) | Fixed import formatting causing the `prek` (pre-commit) CI check to fail |
 
 **Approach decision:** Followed the existing `customColumns`/`customFilters` prop-injection pattern rather than modifying the internals of `ParametricDataTable`, keeping the generic table decoupled from Part-specific logic. For the import actions, reused `ImportPartWizard` and `dataImporterSessionFields` as-is instead of building parallel import logic for Parametric View. After maintainer feedback, consolidated both tables' dropdowns into `PartCreationMenu` rather than leaving the duplication in place.
 
@@ -369,41 +370,31 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 **PR Link:** [inventree/InvenTree#12392](https://github.com/inventree/InvenTree/pull/12392)
 
-**Status:** Approved, awaiting merge
+**Status:** Approved, addressing CI feedback, awaiting merge
 
 **Title:** `[UI] Keep Add Parts button visible in Parametric View`
 
 **PR Description:**
 
-> ## What does this PR do?
+> ## Problem
 >
-> This PR keeps the "Add Parts" toolbar action visible and functional when a Part Category's view is switched from Table View to Parametric View. It adds an optional `customActions` prop to `ParametricDataTable` (following the same pattern as the existing `customColumns` and `customFilters` props), and wires the same "Add Parts" dropdown that Table View already has (Create Part, Import from File, Import from Supplier) into Parametric View through that prop, gated by the same `hasAddRole(UserRoles.part)` permission check. Following review feedback, the dropdown and its associated modals were also extracted into a new shared `PartCreationMenu` component so that `PartListTable` and `ParametricPartTable` no longer duplicate the same logic.
+> The "Add Parts" button disappears when switching to Parametric View on the Parts page, even for admin users. This isn't a permissions issue: `PartListTable` (Table View) and `ParametricPartTable` (Parametric View) are separate components, and only `PartListTable` builds a toolbar with an "Add Parts" action. The generic `ParametricDataTable` that Parametric View wraps only supports per-row actions (like "Add Parameter"), so the button was never wired up for that view in the first place.
 >
-> ## Why was this PR needed?
+> ## Solution
 >
-> Issue #11385 reported that the "Add Parts" button disappears from the toolbar as soon as a user switches a Part Category's Parts tab from Table View to Parametric View, with no error and no indication anything is wrong; only the per-row "Add Parameter" action remains, so there is no way to create a new part from that view.
+> Brought the "Add Parts" button from Table View into Parametric View so both views behave consistently. Added an optional `customActions` prop to `ParametricDataTable`, following the same pattern as the existing `customColumns` and `customFilters` props, and wired the same "Add Parts" dropdown (Create Part, Import from File, Import from Supplier) into Parametric View through that prop, gated by the same `hasAddRole(UserRoles.part)` permission check Table View already uses. A reviewer pointed out the dropdown was now duplicated between the two tables, so I extracted it into a shared `PartCreationMenu` component used by both.
 >
-> Investigation showed this is not a permissions bug. `PartListTable` (Table View) and `ParametricPartTable` (Parametric View) are two separate components, and only `PartListTable` builds a toolbar `tableActions` array containing the "Add Parts" `ActionDropdown`. The generic `ParametricDataTable` that Parametric View wraps has no concept of table-level toolbar actions at all, it only supports per-row actions (like "Add Parameter"). So the button isn't hidden by a broken permission check, it was simply never wired up for that view in the first place.
+> **Before:** button visible in Table View, missing in Parametric View.
+> ![BEFORE](https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png)
 >
-> ## What are the relevant issue numbers?
+> **After:** button present and permission-gated identically in both views.
+> ![AFTER](https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png)
 >
 > Closes #11385
 >
-> ## Screenshots / Recordings
+> ## Testing
 >
-> **Before:** the "Add Parts" button is visible in Table View but absent in Parametric View.
-> ![BEFORE](https://private-user-images.githubusercontent.com/647084/552301302-c1afb4e0-552e-445c-b9eb-df2e46a9394a.png)
->
-> **After:** the "Add Parts" dropdown (Create Part / Import from File / Import from Supplier) is present and permission-gated identically in both views.
-> ![AFTER](https://private-user-images.githubusercontent.com/47701469/621220364-a537b6c3-9822-418c-ace9-97c455c8e84c.png)
->
-> ## Does this PR meet the acceptance criteria?
->
-> - [x] Tests added for new/changed behavior (4 Playwright E2E tests in `pui_part.spec.ts` covering admin visibility, form open, permission gate, and round-trip part creation)
-> - [x] All tests passing (`yarn run test`)
-> - [x] Follows project style guide (`yarn run lint`, `tsc --noEmit` passing)
-> - [x] No breaking changes introduced (`customActions` and `refreshRef` are optional props; existing `ParametricDataTable` callers that don't pass them are unaffected)
-> - [ ] Documentation updated (not applicable, frontend-only UI fix with no user-facing docs to update)
+> Added Playwright tests confirming the button is visible for admins, hidden for read-only users, and that creating a part through the Parametric View works end to end.
 
 
 ### Maintainer Feedback
@@ -411,7 +402,8 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 | Date | Reviewer Comment | My Response |
 |---|---|---|
 | 2026-07-13 | "The combination of 'create new part' / 'import parts' is a repeated pattern here, I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations." | Extracted the dropdown, its modals, and the supplier wizard into a new `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Updated both `PartListTable` and `ParametricPartTable` to render `<PartCreationMenu />` instead of maintaining duplicate copies. Pushed as commit `1e3ae8573` ("[UI] Add PartCreationMenu component for shared part creation actions"), built on top of the original fix in `1370a9d7f`. |
-| 2026-07-15 | Maintainer re-reviewed the `PartCreationMenu` refactor and approved the PR. | No further changes requested. PR is approved and awaiting merge into `master`. |
+| 2026-07-15 | Maintainer re-reviewed the `PartCreationMenu` refactor and approved the PR. | No further changes requested at this point; PR was approved. |
+| 2026-07-28 | Before merge, some CI checks were failing. I commented asking @SchrodingersGat whether they were blockers, since some looked unrelated to the PR. Maintainer replied that the failing frontend tests were pre-existing flaky tests elsewhere that they'd look into, but asked me to address the `prek` (pre-commit) failure specifically. | Fixed the import formatting issue causing the `prek` check to fail, pushed as commit `465dcffed` ("[UI] Fix import formatting in PartTable"), and replied to confirm: "@SchrodingersGat Thanks for confirming! I've addressed the prek test failure and pushed the changes." |
 
 ---
 
@@ -437,6 +429,8 @@ The second real challenge came after submitting the PR: taking the "offload this
 ### What I'd Do Differently Next Time
 
 Set up the full dev environment and load sample data before diving into the code. I spent time wondering if the page had actually loaded when the issue was just missing demo data. I'd also look harder, before opening the PR, at whether my fix was introducing duplication with an existing pattern (`PartListTable`'s dropdown) rather than waiting for a reviewer to point it out. The signal was there in the original diff (an almost line-for-line copy of `PartTable.tsx`'s `ActionDropdown`) and I should have caught it myself.
+
+Looking back at the whole cycle: open a PR, get architectural feedback, refactor into `PartCreationMenu`, get approved, then still have to fix a CI-only failure (`prek`) before merge. Each round required actually reading what the maintainer wrote rather than assuming "approved" meant "done." The teachable part for future cohorts: an approval doesn't mean the PR is mergeable. CI can still block you afterward, and asking a direct, specific question in a PR comment (rather than silently waiting) got a fast, clear answer about which failures actually mattered.
 
 ---
 
