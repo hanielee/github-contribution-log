@@ -370,6 +370,8 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 
 **PR Link:** [inventree/InvenTree#12392](https://github.com/inventree/InvenTree/pull/12392)
 
+**Summary:** Brought the "Add Parts" button (Create Part, Import from File, Import from Supplier) from Table View into Parametric View so both views behave consistently, then extracted the shared dropdown into a new `PartCreationMenu` component after a maintainer flagged duplication between the two tables.
+
 **Status:** Approved, addressing CI feedback, awaiting merge
 
 **Title:** `[UI] Keep Add Parts button visible in Parametric View`
@@ -395,6 +397,12 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 > ## Testing
 >
 > Added Playwright tests confirming the button is visible for admins, hidden for read-only users, and that creating a part through the Parametric View works end to end.
+>
+> **Does this PR meet the acceptance criteria?**
+> - [x] Tests added for new behavior
+> - [x] All tests passing
+> - [x] Follows project style guide
+> - [x] No breaking changes
 
 
 ### Maintainer Feedback
