@@ -15,7 +15,7 @@
 | **Issue** | [#11385: add part button disappear if grid style is changed to parametric view](https://github.com/inventree/InvenTree/issues/11385) |
 | **Branch** | [`fix-issue-add-parts-button`](https://github.com/hanielee/InvenTree/tree/fix-issue-add-parts-button) |
 | **Pull Request** | [inventree/InvenTree#12392](https://github.com/inventree/InvenTree/pull/12392) |
-| **Status** | ![Status](https://img.shields.io/badge/phase%20iv-approved-white?labelColor=ffb6c1&style=flat-square) |
+| **Status** | ![Status](https://img.shields.io/badge/phase%20iv-merged-white?labelColor=ffb6c1&style=flat-square) - Phase IV Merged |
 
 ---
 
@@ -412,6 +412,7 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 | 2026-07-13 | "The combination of 'create new part' / 'import parts' is a repeated pattern here, I think it would be worth offloading this to a common component e.g. `PartCreationMenu` which can be used in both locations." | Extracted the dropdown, its modals, and the supplier wizard into a new `src/frontend/src/components/items/PartCreationMenu.tsx`, parameterized by `categoryId`/`initialData`, `basePartInstance`, `enableImport`, and `refreshRef`. Updated both `PartListTable` and `ParametricPartTable` to render `<PartCreationMenu />` instead of maintaining duplicate copies. Pushed as commit `1e3ae8573` ("[UI] Add PartCreationMenu component for shared part creation actions"), built on top of the original fix in `1370a9d7f`. |
 | 2026-07-15 | Maintainer re-reviewed the `PartCreationMenu` refactor and approved the PR. | No further changes requested at this point; PR was approved. |
 | 2026-07-28 | Before merge, some CI checks were failing. I commented asking @SchrodingersGat whether they were blockers, since some looked unrelated to the PR. Maintainer replied that the failing frontend tests were pre-existing flaky tests elsewhere that they'd look into, but asked me to address the `prek` (pre-commit) failure specifically. | Fixed the import formatting issue causing the `prek` check to fail, pushed as commit `465dcffed` ("[UI] Fix import formatting in PartTable"), and replied to confirm: "@SchrodingersGat Thanks for confirming! I've addressed the prek test failure and pushed the changes." |
+| 2026-07-30 | Maintainer approved my changes and merged the pull request. | 
 
 ---
 
@@ -425,6 +426,7 @@ Submitted [PR #12392](https://github.com/inventree/InvenTree/pull/12392) against
 - Wrote Playwright tests for a real open source project, including a full round-trip integration test that creates and deletes a part.
 - Learned to recognize duplication *while writing it* rather than only after review. Copying the dropdown into `ParametricPartTable` was the fastest path to a working fix, but it wasn't the right end state, and a maintainer caught what I should have caught myself.
 - Practiced extracting a shared component (`PartCreationMenu`) from two call sites with slightly different needs (`PartListTable` passes `basePartInstance` for duplication, `ParametricPartTable` doesn't), designing the prop surface so both callers stay simple.
+- I developed a better understanding of GitHub CI workflows and how they fit into the pull request process.
 
 ### Challenges Overcome
 
@@ -440,6 +442,7 @@ Set up the full dev environment and load sample data before diving into the code
 
 Looking back at the whole cycle: open a PR, get architectural feedback, refactor into `PartCreationMenu`, get approved, then still have to fix a CI-only failure (`prek`) before merge. Each round required actually reading what the maintainer wrote rather than assuming "approved" meant "done." The teachable part for future cohorts: an approval doesn't mean the PR is mergeable. CI can still block you afterward, and asking a direct, specific question in a PR comment (rather than silently waiting) got a fast, clear answer about which failures actually mattered.
 
+Finally, I'd pay closer attention to the GitHub CI checks throughout the review process instead of only looking at them after approval. Even if the code has been approved, the PR isn't really finished until all of the CI checks have passed. Monitoring the checks as they run, investigating failures as soon as they appear, and asking a specific question if a failure is unclear would help avoid unnecessary delays and make the path to merging much smoother.
 ---
 
 ## Resources Used
